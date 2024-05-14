@@ -1,0 +1,55 @@
+server:
+    port: 8080
+spring:
+    redis:
+        timeout: 5000
+        lettuce:
+            pool:
+                max-active: 32
+                max-wait: -1
+                max-idle: 16
+                min-idle: 8
+    data:
+        elasticsearch:
+            repositories:
+                enabled: true
+    elasticsearch:
+        socket-timeout: 50000
+        uris: localhost:9200
+        connection-timeout: 300000
+
+    task:
+      execution:
+        pool:
+            core-size: 5
+            max-size: 20
+            queue-capacity: 10
+    datasource:
+        druid:
+            driver-class-name: com.mysql.cj.jdbc.Driver
+            url: jdbc:mysql://localhost:3306/septangle_blog?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+            username: root
+            password: Eaib1b0402a7fe7
+            max-active: 100
+        type: com.alibaba.druid.pool.DruidDataSource
+    servlet:
+      multipart:
+          max-file-size: 10MB
+          max-request-size: 10MB
+
+
+mybatis-plus:
+    mapper-locations: classpath:mappers/*
+    configuration:
+        map-underscore-to-camel-case: true
+    global-config:
+        db-config:
+            id-type: auto
+constant:
+    date:
+        format:
+            basic: yyyy-MM-dd HH:mm:ss
+    token:
+        expire-time: 2592000000
+        refresh-time: 2592000000
+

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.septangle.momosachiblog.mapper.ArticleMapper">
+    <select id="getArticleWithTagId" resultType="com.septangle.momosachiblog.domain.entity.Article">
+        SELECT *
+        FROM article a
+        JOIN article_tag on article_tag.tag_id = #{tagId} and a.id = article_tag.article_id
+        WHERE a.status = 0 and a.is_delete = 0
+        ORDER BY a.create_time DESC
+    </select>
+
+    <select id="getByPid" resultType="com.septangle.momosachiblog.domain.entity.Article">
+        SELECT *
+        FROM article a
+        WHERE a.pid = #{pid} and a.status = 0 and a.is_delete = 0
+    </select>
+    
+    <select id="getAllByTagPid" resultType="com.septangle.momosachiblog.domain.entity.Article">
+        SELECT *
+        FROM article a
+        WHERE a.id IN (SELECT article_id FROM article_tag WHERE tag_id IN (SELECT id FROM tag WHERE pid = #{pid}));
+    </select>
+
+    <delete id="removeByPid">
+        delete from article a where a.pid = #{pid}
+    </delete>
+
+    <select id="getByCategoryPid" resultType="com.septangle.momosachiblog.domain.entity.Article">
+        Select * FROM article a
+        WHERE a.status = 0 and a.is_delete = 0
+        and a.category_id = (select id from category c where c.pid = #{pid})
+    </select>
+
+</mapper>
