@@ -1,11 +1,11 @@
 package com.septangle.momosachiblog.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.septangle.momosachiblog.constant.UserConstant;
 import com.septangle.momosachiblog.domain.R;
 import com.septangle.momosachiblog.domain.dto.CommentDTO;
-import com.septangle.momosachiblog.domain.dto.CommentTransDTO;
 import com.septangle.momosachiblog.domain.entity.Article;
 import com.septangle.momosachiblog.domain.entity.ArticleTag;
 import com.septangle.momosachiblog.domain.entity.Comment;
@@ -14,6 +14,8 @@ import com.septangle.momosachiblog.service.ArticleService;
 import com.septangle.momosachiblog.service.ArticleTagService;
 import com.septangle.momosachiblog.service.CommentService;
 import com.septangle.momosachiblog.service.UserService;
+import com.septangle.momosachiblog.utils.DTOUtils;
+import com.septangle.momosachiblog.utils.Generator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -43,7 +45,7 @@ public class CommentController {
     ArticleTagService articleTagService;
 
     @PostMapping("/comment")
-    public R<String> addComment(@RequestBody CommentDTO commentInfo, HttpServletRequest request){
+    public R<String> addComment(@RequestBody CommentDTO commentDTO, HttpServletRequest request){
 
         //处理ip属地信息
 
@@ -52,68 +54,62 @@ public class CommentController {
          * http://ip-api.com/json/24.48.0.1?lang=zh-CN
          */
 
+        // 检查是否存在 相同昵称 不同邮箱 的用户
         LambdaQueryWrapper<User>duplicateUserFilter = new LambdaQueryWrapper<>();
         duplicateUserFilter
-                .eq(User::getNickname, commentInfo.getNickname())
+                .eq(User::getNickname, commentDTO.getNickname())
                 .eq(User::getIsDelete, 0);
         User duplicateUser = userService.getOne(duplicateUserFilter);
-        if(duplicateUser != null && !duplicateUser.getEmail().equals(commentInfo.getEmail())){
+        if(duplicateUser != null && !duplicateUser.getEmail().equals(commentDTO.getEmail())){
             return R.error("该用户已存在!!!");
         }
-        log.info("{}", commentInfo);
+
         //更新头像
-        if(duplicateUser != null && !commentInfo.getAvatar().equals("not-update")){
-            duplicateUser.setAvatar(commentInfo.getAvatar());
+        if(Objects.nonNull(duplicateUser) && !commentDTO.getAvatar().equals("not-update")){
+            duplicateUser.setAvatar(commentDTO.getAvatar());
         }
 
         //若用户不存在则创建一个新用户
-        if(duplicateUser == null){
+        if(Objects.isNull(duplicateUser)){
             User user = new User();
-            user.setUserByCommentDTO(commentInfo);
+            user.setUserByCommentDTO(commentDTO);
             duplicateUser = user;
         }
+
+        //保存 User 和 Comment
         userService.saveOrUpdate(duplicateUser);
-        Long userID = duplicateUser.getId();
-
-        Comment comment = new Comment();
-
-        comment.setArticleId(articleService.getByPid(commentInfo.getPid()).getId());
-
-
-        comment.setContent(commentInfo.getContent());
-        comment.setFatherId(commentInfo.getFatherId());
-        comment.setReplyBy(userID);
-        comment.setIpAddress(commentInfo.getIpAddress());
-        comment.setRootParentId(commentInfo.getRootParentId());
+        Comment comment = DTOUtils.getByDTO(commentDTO, duplicateUser.getId());
         commentService.save(comment);
 
         return R.success("添加成功");
     }
 
 
-    @GetMapping("/comment")
+    @GetMapping("/comment/pagination/{current}/{size}")
     public R<Page<CommentDTO>> getComment(
-            @RequestParam(required = false) Long articleId,
-            @RequestParam(required = false) Long rootParentId,
-            @RequestParam(required = false) String articlePid,
-            @RequestParam Integer pageSize,
-            @RequestParam Integer pageNum){
-        if(articlePid == null){
-            return getChildrenComment(articleId, rootParentId, pageSize, pageNum);
-        }else{
-            return getRootCommentWithArticleID(articlePid, pageNum, pageSize);
+            @RequestParam Long rootId,
+            @RequestParam String articlePid,
+            @RequestParam(required = false, value = "create-time") String order,
+            @PathVariable Integer size,
+            @PathVariable Integer current){
+
+        Article article = articleService.getByPid(articlePid);
+        if(Objects.isNull(article)) {
+            return R.error("文章不存在，或已被删除");
         }
+
+        return pagination(current, size, article, rootId, 0, order);
     }
 
 
     @GetMapping("/comment/count/{articlePid}")
     public R<Long> getCommentCount(@PathVariable String articlePid) {
 
-        LambdaQueryWrapper<Article> articleIdGetter = new LambdaQueryWrapper<>();
-        articleIdGetter
-                .eq(Article::getPid, articlePid);
-
-        Long articleId = articleService.getOne(articleIdGetter).getId();
+        Article article = articleService.getByPid(articlePid);
+        if (Objects.isNull(article)) {
+            return R.error("文章不存在");
+        }
+        Long articleId = article.getId();
 
         LambdaQueryWrapper<Comment> commentCountGetter = new LambdaQueryWrapper<>();
         commentCountGetter
@@ -133,6 +129,40 @@ public class CommentController {
         }
     }
 
+    private R<Page<CommentDTO>> pagination(int current, int size,
+                                           Article article, Long rootId,
+                                           int isDeleted, String order
+    ) {
+        //创建筛选条件
+        Page<Comment> page = new Page<>(current, size);
+        LambdaQueryWrapper<Comment> commentLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        commentLambdaQueryWrapper
+                .eq(Comment::getArticleId, article.getId())
+                .eq(Comment::getRootId, rootId)
+                .eq(Comment::getIsDelete, isDeleted)
+                .eq(Comment::getStatus, 0);
+        if("hot".equals(order)) {
+            commentLambdaQueryWrapper
+                    .orderByDesc(Comment::getLikeCount);
+        }else if("create-time".equals(order)) {
+            commentLambdaQueryWrapper
+                    .orderByDesc(Comment::getCreateTime);
+        }
+        //分页
+        commentService.page(page, commentLambdaQueryWrapper);
+
+        Page<CommentDTO> result = new Page<>(current, size, page.getTotal());
+        List<CommentDTO> record = new ArrayList<>();
+        for(Comment comment : page.getRecords()) {
+            User user = userService.getById(comment.getReplyBy());
+            CommentDTO commentDTO = getByComment(user, comment, article.getPid());
+            record.add(commentDTO);
+        }
+        result.setRecords(record);
+
+        return R.success(result);
+    }
+
 
     //utils
     public R<String> updateUserLikeStatusIncrease(@PathVariable Long commentId){
@@ -148,6 +178,23 @@ public class CommentController {
         return R.success("取消点赞成功");
     }
 
+    private CommentDTO getByComment(User commentUser, Comment comment, String articlePid) {
+        CommentDTO commentDTO = new CommentDTO();
+        commentDTO.setWebsite(commentUser.getWebsite());
+        commentDTO.setAvatar(commentUser.getAvatar());
+        commentDTO.setNickname(commentUser.getNickname());
+        commentDTO.setIpAddress(comment.getIpAddress());
+        commentDTO.setLikeCount(comment.getLikeCount());
+        commentDTO.setCreateTime(comment.getCreateTime());
+        commentDTO.setRootId(comment.getRootId());
+        commentDTO.setContent(comment.getContent());
+        commentDTO.setCommentId(comment.getId());
+        commentDTO.setArticlePid(articlePid);
+        return commentDTO;
+    }
+
+
+    /*
     private R<Page<CommentDTO>> getRootCommentWithArticleID(
             String articlePid,
             Integer pageNum, Integer pageSize){
@@ -186,65 +233,17 @@ public class CommentController {
         return R.success(results);
     }
 
-    private R<Page<CommentDTO>>getChildrenComment(
-            Long articleId, Long rootParentId,
-            Integer pageSize, Integer pageNum){
+*/
 
-        /**
-         * 获取root评论下的所有评论
-         */
-        LambdaQueryWrapper<Comment>defaultPageDataGetter = new LambdaQueryWrapper<>();
-        defaultPageDataGetter
-                .eq(Comment::getStatus, 0)
-                .eq(Comment::getIsDelete, 0)
-                .eq(Comment::getArticleId, articleId)
-                .eq(Comment::getRootParentId, rootParentId)
-                .orderByDesc(Comment::getCreateTime);
+    /*
+    private Comment getByPid(String pid, int isDeleted) {
+        LambdaQueryWrapper<Comment>commentLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        commentLambdaQueryWrapper
+                .eq(Comment::getPid, pid)
+                .eq(Comment::getIsDelete, isDeleted);
 
-        Page<Comment>defaultPage = new Page<>(pageNum, pageSize);
-        commentService.page(defaultPage, defaultPageDataGetter);
-
-
-        //将comment转换到commentDTO中，
-        List<CommentDTO>records = new ArrayList<>();
-        List<Comment>defaultPageRecords = defaultPage.getRecords();
-
-
-        long floor = 1L;
-        for(Comment comment : defaultPageRecords){
-            //获取回复人 与 回复给谁的信息
-            User commentUser = userService.getById(comment.getReplyBy());
-            log.info("commentUser={}",commentUser);
-            Comment replyToComment = commentService.getById(comment.getFatherId());
-            log.info("{}",replyToComment);
-            User replyToUser = userService.getById(replyToComment.getReplyBy());
-            CommentDTO commentDTO = setCommentDTO(commentUser, comment);
-
-            commentDTO.setReplyToFeature(replyToComment.getCreateTime().getTime());
-            commentDTO.setReplyTo(replyToUser.getNickname());
-            commentDTO.setFloor(floor++);
-
-            //用时间来作为特征码
-            //先获取回复人的ID
-            commentDTO.setReplyToFeature(commentService.getById(comment.getFatherId()).getCreateTime().getTime());
-            records.add(commentDTO);
-        }
-        Page<CommentDTO>result = new Page<>(pageNum, pageSize, defaultPage.getTotal());
-        result.setRecords(records);
-        return R.success(result);
+        return commentService.getOne(commentLambdaQueryWrapper);
     }
-    private CommentDTO setCommentDTO(User commentUser, Comment comment) {
-        CommentDTO commentDTO = new CommentDTO();
-        commentDTO.setWebsite(commentUser.getWebsite());
-        commentDTO.setAvatar(commentUser.getAvatar());
-        commentDTO.setNickname(commentUser.getNickname());
-        commentDTO.setIpAddress(comment.getIpAddress());
-        commentDTO.setLikeCount(comment.getLikeCount());
-        commentDTO.setCreateTime(comment.getCreateTime());
-        commentDTO.setRootParentId(comment.getRootParentId());
-        commentDTO.setContent(comment.getContent());
-        commentDTO.setCommentId(comment.getId());
-        commentDTO.setArticleId(comment.getArticleId());
-        return commentDTO;
-    }
+    */
+
 }

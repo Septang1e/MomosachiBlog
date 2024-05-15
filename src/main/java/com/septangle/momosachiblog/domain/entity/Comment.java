@@ -26,16 +26,19 @@ public class Comment implements Serializable {
 
     private Long articleId;
 
-    private Long rootParentId;
+    // -1为初始评论
+    private Long rootId;
+
+    private Long replyTo;
+
+    //user_id
+    private Long replyBy;
+
+    private String pid;
 
     private Long likeCount;
 
     private String ipAddress;
-
-    //为-1时此评论为初始评论
-    private Long fatherId;
-
-    private Long replyBy;
 
     private String content;
 

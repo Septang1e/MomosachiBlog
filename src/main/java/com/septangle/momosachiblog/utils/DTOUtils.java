@@ -2,13 +2,26 @@ package com.septangle.momosachiblog.utils;
 
 import com.septangle.momosachiblog.domain.dto.ArticleDTO;
 import com.septangle.momosachiblog.domain.dto.ArticleUploadDTO;
+import com.septangle.momosachiblog.domain.dto.CommentDTO;
 import com.septangle.momosachiblog.domain.entity.Article;
+import com.septangle.momosachiblog.domain.entity.Comment;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class DTOUtils {
+
+    public static Comment getByDTO(CommentDTO commentDTO, Long userId) {
+        Comment comment = new Comment();
+        comment.setReplyBy(userId);
+        comment.setContent(commentDTO.getContent());
+        comment.setReplyTo(comment.getReplyTo());
+        comment.setRootId(comment.getRootId());
+        comment.setIpAddress(commentDTO.getIpAddress());
+        return comment;
+    }
+
 
     public static ArticleDTO setArticleDTO(Article article){
         ArticleDTO articleDTO = new ArticleDTO();
