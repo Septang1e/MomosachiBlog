@@ -15,6 +15,7 @@ import com.septangle.momosachiblog.utils.PaginationUtils;
 import lombok.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;

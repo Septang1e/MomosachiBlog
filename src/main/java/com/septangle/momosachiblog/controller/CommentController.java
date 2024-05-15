@@ -30,7 +30,7 @@ import java.util.*;
 
 @RestController
 @Slf4j
-@RequestMapping("/api/comment")
+@RequestMapping("/api")
 public class CommentController {
 
     @Autowired
@@ -42,7 +42,7 @@ public class CommentController {
     @Resource
     ArticleTagService articleTagService;
 
-    @PostMapping("/add")
+    @PostMapping("/comment")
     public R<String> addComment(@RequestBody CommentDTO commentInfo, HttpServletRequest request){
 
         //处理ip属地信息
@@ -85,14 +85,13 @@ public class CommentController {
         comment.setReplyBy(userID);
         comment.setIpAddress(commentInfo.getIpAddress());
         comment.setRootParentId(commentInfo.getRootParentId());
-
         commentService.save(comment);
 
         return R.success("添加成功");
     }
 
 
-    @GetMapping("/get")
+    @GetMapping("/comment")
     public R<Page<CommentDTO>> getComment(
             @RequestParam(required = false) Long articleId,
             @RequestParam(required = false) Long rootParentId,
@@ -107,7 +106,7 @@ public class CommentController {
     }
 
 
-    @GetMapping("/count/{articlePid}")
+    @GetMapping("/comment/count/{articlePid}")
     public R<Long> getCommentCount(@PathVariable String articlePid) {
 
         LambdaQueryWrapper<Article> articleIdGetter = new LambdaQueryWrapper<>();
@@ -119,20 +118,29 @@ public class CommentController {
         LambdaQueryWrapper<Comment> commentCountGetter = new LambdaQueryWrapper<>();
         commentCountGetter
                 .eq(Comment::getArticleId, articleId)
-                        .eq(Comment::getStatus, 0)
-                                .eq(Comment::getIsDelete, 0);
+                .eq(Comment::getStatus, 0)
+                .eq(Comment::getIsDelete, 0);
 
         return R.success(commentService.count(commentCountGetter));
     }
 
-    @PostMapping("/increase/{commentId}")
+    @PostMapping("/comment/like/{commentId}")
+    public R<String> likeComment(@PathVariable Long commentId, @RequestParam int status) {
+        if(status == 0) {
+            return updateUserLikeStatusIncrease(commentId);
+        }else{
+            return updateUserLikeStatusDecrease(commentId);
+        }
+    }
+
+
+    //utils
     public R<String> updateUserLikeStatusIncrease(@PathVariable Long commentId){
         Comment comment = commentService.getById(commentId);
         comment.setLikeCount(comment.getLikeCount() + 1);
         commentService.saveOrUpdate(comment);
         return R.success("点赞成功");
     }
-    @PostMapping("/decrease/{commentId}")
     public R<String> updateUserLikeStatusDecrease(@PathVariable Long commentId){
         Comment comment = commentService.getById(commentId);
         comment.setLikeCount(comment.getLikeCount() - 1);
@@ -140,25 +148,20 @@ public class CommentController {
         return R.success("取消点赞成功");
     }
 
-
-
-    //utils
-
     private R<Page<CommentDTO>> getRootCommentWithArticleID(
             String articlePid,
             Integer pageNum, Integer pageSize){
 
         //将 articlePid 转换为 articleId
-        LambdaQueryWrapper<Article>articleIDGetter = new LambdaQueryWrapper<>();
-        articleIDGetter.eq(Article::getStatus, 0).eq(Article::getPid, articlePid);
-        Long articleId = articleService.getOne(articleIDGetter).getId();
+        Long id = articleService.getByPid(articlePid).getId();
+
 
         //初始的分页结果
         LambdaQueryWrapper<Comment>commentDefaultDataGetter = new LambdaQueryWrapper<>();
         commentDefaultDataGetter
                 .eq(Comment::getIsDelete, 0)
                 .eq(Comment::getStatus, 0)
-                .eq(Comment::getArticleId, articleId)
+                .eq(Comment::getArticleId, id)
                 .eq(Comment::getFatherId, -1)
                 .orderByDesc(Comment::getCreateTime);
 
@@ -184,10 +187,8 @@ public class CommentController {
     }
 
     private R<Page<CommentDTO>>getChildrenComment(
-            Long articleId,
-            Long rootParentId,
-            Integer pageSize,
-            Integer pageNum){
+            Long articleId, Long rootParentId,
+            Integer pageSize, Integer pageNum){
 
         /**
          * 获取root评论下的所有评论
@@ -203,9 +204,8 @@ public class CommentController {
         Page<Comment>defaultPage = new Page<>(pageNum, pageSize);
         commentService.page(defaultPage, defaultPageDataGetter);
 
-        /**
-         * 将comment转换到commentDTO中，
-         */
+
+        //将comment转换到commentDTO中，
         List<CommentDTO>records = new ArrayList<>();
         List<Comment>defaultPageRecords = defaultPage.getRecords();
 
