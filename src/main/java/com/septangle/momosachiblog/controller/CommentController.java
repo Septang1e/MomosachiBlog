@@ -16,6 +16,7 @@ import com.septangle.momosachiblog.service.CommentService;
 import com.septangle.momosachiblog.service.UserService;
 import com.septangle.momosachiblog.utils.DTOUtils;
 import com.septangle.momosachiblog.utils.Generator;
+import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -79,9 +80,10 @@ public class CommentController {
         //保存 User 和 Comment
         userService.saveOrUpdate(duplicateUser);
         Comment comment = DTOUtils.getByDTO(commentDTO, duplicateUser.getId());
+        comment.setStatus(1);
         commentService.save(comment);
 
-        return R.success("添加成功");
+        return R.success("评论提交成功，审核通过后即生效");
     }
 
 
@@ -99,6 +101,14 @@ public class CommentController {
         }
 
         return pagination(current, size, article, rootId, 0, order);
+    }
+
+    @GetMapping("/admin/comment/pagination/{current}/{size}")
+    public  R<Page<CommentDTO>> commentPagination(@PathVariable int current,
+                                                  @PathVariable int size) {
+        //发送的文章，发送人的用户信息，评论内容
+        Page<CommentDTO> result = pagination(current, size, null, 0);
+        return R.success(result);
     }
 
 
@@ -162,7 +172,43 @@ public class CommentController {
 
         return R.success(result);
     }
+    private Page<CommentDTO> pagination(int current, int size, Integer status, Integer isDeleted) {
+        Page<Comment> page = new Page<>(current, size);
+        LambdaQueryWrapper<Comment> commentLambdaQueryWrapper = new LambdaQueryWrapper<>();
 
+        //
+        if(Objects.nonNull(status)) {
+            commentLambdaQueryWrapper
+                    .eq(Comment::getStatus, 0);
+        }
+        if(Objects.nonNull(isDeleted)) {
+            commentLambdaQueryWrapper
+                    .eq(Comment::getIsDelete, isDeleted);
+        }
+        commentService.page(page, commentLambdaQueryWrapper);
+
+        List<CommentDTO> record = new ArrayList<>(page.getRecords().size());
+        for(Comment comment : page.getRecords()) {
+            User user = userService.getById(comment.getReplyBy());
+            Article article = articleService.getById(comment.getArticleId());
+            if(Objects.isNull(user)) {
+                log.info("id为 {} 的用户不存在!!该评论Id为 {}", comment.getReplyBy(), comment.getId());
+                continue;
+            }
+            if(Objects.isNull(article)) {
+                log.info("id为 {} 的文章不存在!!该评论Id为 {}", comment.getArticleId(), comment.getId());
+                continue;
+            }
+
+            CommentDTO commentDTO = getByComment(user, comment, article.getPid());
+            commentDTO.setArticle(article.getTitle());
+            commentDTO.setEmail(user.getEmail());
+            record.add(commentDTO);
+        }
+        Page<CommentDTO> result = new Page<>(current, size, page.getTotal());
+        result.setRecords(record);
+        return result;
+    }
 
     //utils
     public R<String> updateUserLikeStatusIncrease(@PathVariable Long commentId){
@@ -187,6 +233,7 @@ public class CommentController {
         commentDTO.setLikeCount(comment.getLikeCount());
         commentDTO.setCreateTime(comment.getCreateTime());
         commentDTO.setRootId(comment.getRootId());
+        commentDTO.setToId(commentDTO.getToId());
         commentDTO.setContent(comment.getContent());
         commentDTO.setCommentId(comment.getId());
         commentDTO.setArticlePid(articlePid);

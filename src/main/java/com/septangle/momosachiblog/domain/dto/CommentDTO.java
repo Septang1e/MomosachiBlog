@@ -36,6 +36,8 @@ public class CommentDTO {
 
     private String avatarRandom;
 
+    private String article;
+
     //用于检测重复的username和email是否相匹配
     private String email;
 
