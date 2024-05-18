@@ -139,6 +139,20 @@ public class CommentController {
         return R.success("删除成功");
     }
 
+    @PostMapping("/admin/bin/comment")
+    public R<String> recover(@RequestBody Long []idList) {
+
+        for(Long id : idList) {
+            Comment comment = commentService.getById(id);
+            if(Objects.isNull(comment)) {
+                return R.error("评论 " + id + " 不存在");
+            }
+            comment.setIsDelete(0);
+            commentService.updateById(comment);
+        }
+        return R.success("数据恢复成功");
+    }
+
 
 
     @GetMapping("/comment/pagination/{current}/{size}")
@@ -151,7 +165,7 @@ public class CommentController {
 
         Article article = articleService.getByPid(articlePid);
         if(Objects.isNull(article)) {
-            return R.error("文章不存在，或已被删除");
+            return R.error(null);
         }
 
         return pagination(current, size, article, rootId, 0, order);
@@ -159,9 +173,9 @@ public class CommentController {
 
     @GetMapping("/admin/comment/pagination/{current}/{size}")
     public  R<Page<CommentQueryDTO>> commentPagination(@PathVariable int current, @RequestParam(required = false) Integer status,
-                                                       @PathVariable int size) {
+                                                       @PathVariable int size, @RequestParam(required = false) Integer is_deleted) {
         //发送的文章，发送人的用户信息，评论内容
-        Page<CommentQueryDTO> result = pagination(current, size, status, 0);
+        Page<CommentQueryDTO> result = pagination(current, size, status, is_deleted);
         return R.success(result);
     }
 
@@ -171,7 +185,7 @@ public class CommentController {
 
         Article article = articleService.getByPid(articlePid);
         if (Objects.isNull(article)) {
-            return R.error("文章不存在");
+            return R.error(null);
         }
         Long articleId = article.getId();
 
@@ -247,11 +261,13 @@ public class CommentController {
             Article article = articleService.getById(comment.getArticleId());
             if(Objects.isNull(user)) {
                 log.info("id为 {} 的用户不存在!!该评论Id为 {}", comment.getReplyBy(), comment.getId());
-                continue;
+                user = new User();
+                user.setNickname("用户不存在！！！");
             }
             if(Objects.isNull(article)) {
                 log.info("id为 {} 的文章不存在!!该评论Id为 {}", comment.getArticleId(), comment.getId());
-                continue;
+                article = new Article();
+                article.setTitle("文章不存在！！！");
             }
             CommentQueryDTO commentQueryDTO = getByComment(user, comment, article);
 

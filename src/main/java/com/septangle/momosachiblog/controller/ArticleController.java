@@ -44,6 +44,8 @@ public class ArticleController {
     private TagRepository tagRepository;
     @Autowired
     private CategoryRepository categoryRepository;
+    @Autowired
+    private CommentService commentService;
 
     /**
      * 分页
@@ -298,6 +300,12 @@ public class ArticleController {
 
             articleTagService.remove(articleTagLambdaQueryWrapper);
             articleService.removeById(articleId);
+
+            //删除和article有关的所有评论
+            LambdaQueryWrapper<Comment> commentLambdaQueryWrapper = new LambdaQueryWrapper<>();
+            commentLambdaQueryWrapper
+                    .eq(Comment::getArticleId, articleId);
+            commentService.remove(commentLambdaQueryWrapper);
         }
 
         return R.success("删除成功");
