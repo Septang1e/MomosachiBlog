@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.septangle.momosachiblog.constant.UserConstant;
 import com.septangle.momosachiblog.domain.R;
 import com.septangle.momosachiblog.domain.dto.CommentDTO;
+import com.septangle.momosachiblog.domain.dto.CommentQueryDTO;
+import com.septangle.momosachiblog.domain.dto.UserQueryDTO;
 import com.septangle.momosachiblog.domain.entity.Article;
 import com.septangle.momosachiblog.domain.entity.ArticleTag;
 import com.septangle.momosachiblog.domain.entity.Comment;
@@ -81,10 +83,62 @@ public class CommentController {
         userService.saveOrUpdate(duplicateUser);
         Comment comment = DTOUtils.getByDTO(commentDTO, duplicateUser.getId());
         comment.setStatus(1);
+
+        //检验邮箱是否正确
+
         commentService.save(comment);
 
         return R.success("评论提交成功，审核通过后即生效");
     }
+    @DeleteMapping("/admin/comment")
+    public R<String> deleteById(@RequestBody Long []idList, @RequestParam(required = false) String msg) {
+
+        log.info("{}", (Object) idList);
+
+        for(Long id : idList) {
+            Comment comment = commentService.getById(id);
+            if(Objects.isNull(comment)) {
+                return R.error("评论 " + id + " 不存在");
+            }
+
+            // 发送邮件操作，告知评论被删除
+
+            comment.setIsDelete(1);
+            commentService.updateById(comment);
+        }
+        return R.success("删除成功，数据可以在回收站中恢复");
+    }
+
+    @PostMapping("/admin/comment/accept")
+    public R<String> accept(@RequestBody Long []idList, @RequestParam(required = false) String msg) {
+
+        for(Long id : idList) {
+            Comment comment = commentService.getById(id);
+            if(Objects.isNull(comment)) {
+                return R.error("评论 " + id + " 不存在");
+            }
+            comment.setStatus(0);
+
+            //发送邮件的操作
+
+            commentService.updateById(comment);
+        }
+        return R.success("评论已发布");
+    }
+
+    @DeleteMapping("/admin/bin/comment")
+    public R<String> removeFromDatabase(@RequestBody Long []idList) {
+
+        for(Long id : idList) {
+            Comment comment = commentService.getById(id);
+            if(Objects.isNull(comment)) {
+                return R.error("评论 " + id + " 不存在");
+            }
+            commentService.removeById(comment);
+        }
+        return R.success("删除成功");
+    }
+
 
 
     @GetMapping("/comment/pagination/{current}/{size}")
@@ -104,10 +158,10 @@ public class CommentController {
     }
 
     @GetMapping("/admin/comment/pagination/{current}/{size}")
-    public  R<Page<CommentDTO>> commentPagination(@PathVariable int current,
-                                                  @PathVariable int size) {
+    public  R<Page<CommentQueryDTO>> commentPagination(@PathVariable int current, @RequestParam(required = false) Integer status,
+                                                       @PathVariable int size) {
         //发送的文章，发送人的用户信息，评论内容
-        Page<CommentDTO> result = pagination(current, size, null, 0);
+        Page<CommentQueryDTO> result = pagination(current, size, status, 0);
         return R.success(result);
     }
 
@@ -172,14 +226,14 @@ public class CommentController {
 
         return R.success(result);
     }
-    private Page<CommentDTO> pagination(int current, int size, Integer status, Integer isDeleted) {
+    private Page<CommentQueryDTO> pagination(int current, int size, Integer status, Integer isDeleted) {
         Page<Comment> page = new Page<>(current, size);
         LambdaQueryWrapper<Comment> commentLambdaQueryWrapper = new LambdaQueryWrapper<>();
 
         //
         if(Objects.nonNull(status)) {
             commentLambdaQueryWrapper
-                    .eq(Comment::getStatus, 0);
+                    .eq(Comment::getStatus, status);
         }
         if(Objects.nonNull(isDeleted)) {
             commentLambdaQueryWrapper
@@ -187,7 +241,7 @@ public class CommentController {
         }
         commentService.page(page, commentLambdaQueryWrapper);
 
-        List<CommentDTO> record = new ArrayList<>(page.getRecords().size());
+        List<CommentQueryDTO> record = new ArrayList<>(page.getRecords().size());
         for(Comment comment : page.getRecords()) {
             User user = userService.getById(comment.getReplyBy());
             Article article = articleService.getById(comment.getArticleId());
@@ -199,13 +253,11 @@ public class CommentController {
                 log.info("id为 {} 的文章不存在!!该评论Id为 {}", comment.getArticleId(), comment.getId());
                 continue;
             }
+            CommentQueryDTO commentQueryDTO = getByComment(user, comment, article);
 
-            CommentDTO commentDTO = getByComment(user, comment, article.getPid());
-            commentDTO.setArticle(article.getTitle());
-            commentDTO.setEmail(user.getEmail());
-            record.add(commentDTO);
+            record.add(commentQueryDTO);
         }
-        Page<CommentDTO> result = new Page<>(current, size, page.getTotal());
+        Page<CommentQueryDTO> result = new Page<>(current, size, page.getTotal());
         result.setRecords(record);
         return result;
     }
@@ -238,6 +290,23 @@ public class CommentController {
         commentDTO.setCommentId(comment.getId());
         commentDTO.setArticlePid(articlePid);
         return commentDTO;
+    }
+
+    private CommentQueryDTO getByComment(User user, Comment comment, Article article) {
+        UserQueryDTO userQueryDTO = new UserQueryDTO();
+        userQueryDTO.setNickname(user.getNickname());
+        userQueryDTO.setUserId(user.getId());
+        userQueryDTO.setEmail(user.getEmail());
+        userQueryDTO.setIsAdmin(user.getIsAdmin());
+
+        CommentQueryDTO result = new CommentQueryDTO();
+        result.setUser(userQueryDTO);
+        result.setArticleTitle(article.getTitle());
+        result.setStatus(comment.getStatus());
+        result.setCommentId(comment.getId());
+        result.setContent(comment.getContent());
+
+        return result;
     }
 
 
