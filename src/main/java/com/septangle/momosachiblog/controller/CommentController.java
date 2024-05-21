@@ -1,35 +1,30 @@
 package com.septangle.momosachiblog.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.septangle.momosachiblog.constant.UserConstant;
 import com.septangle.momosachiblog.domain.R;
 import com.septangle.momosachiblog.domain.dto.CommentDTO;
 import com.septangle.momosachiblog.domain.dto.CommentQueryDTO;
 import com.septangle.momosachiblog.domain.dto.UserQueryDTO;
 import com.septangle.momosachiblog.domain.entity.Article;
-import com.septangle.momosachiblog.domain.entity.ArticleTag;
 import com.septangle.momosachiblog.domain.entity.Comment;
 import com.septangle.momosachiblog.domain.entity.User;
+import com.septangle.momosachiblog.domain.repository.rabbitMq.producer.Producer;
+import com.septangle.momosachiblog.module.rabbit.EmailCheckModule;
 import com.septangle.momosachiblog.service.ArticleService;
 import com.septangle.momosachiblog.service.ArticleTagService;
 import com.septangle.momosachiblog.service.CommentService;
 import com.septangle.momosachiblog.service.UserService;
 import com.septangle.momosachiblog.utils.DTOUtils;
 import com.septangle.momosachiblog.utils.Generator;
-import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
-import org.yaml.snakeyaml.scanner.Constant;
 
 import javax.annotation.Resource;
-import javax.annotation.Resources;
 import javax.servlet.http.HttpServletRequest;
-import javax.websocket.server.PathParam;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.*;
 
 
@@ -45,7 +40,12 @@ public class CommentController {
     @Autowired
     ArticleService articleService;
     @Resource
-    ArticleTagService articleTagService;
+    private ArticleTagService articleTagService;
+    @Resource
+    private Producer producer;
+    @Resource
+    private RabbitTemplate rabbitTemplate;
+    public static final String AMQP_SIMPLE_QUEUE = "foo.var.#";
 
     @PostMapping("/comment")
     public R<String> addComment(@RequestBody CommentDTO commentDTO, HttpServletRequest request){
@@ -74,19 +74,26 @@ public class CommentController {
 
         //若用户不存在则创建一个新用户
         if(Objects.isNull(duplicateUser)){
-            User user = new User();
-            user.setUserByCommentDTO(commentDTO);
-            duplicateUser = user;
+            duplicateUser = new User(commentDTO);
+        }
+
+        Article article = articleService.getByPid(commentDTO.getArticlePid());
+        if(Objects.isNull(article)) {
+            log.error("pid为{}的文章不存在", commentDTO.getArticlePid());
+            return R.error("文章PID出现异常");
         }
 
         //保存 User 和 Comment
         userService.saveOrUpdate(duplicateUser);
         Comment comment = DTOUtils.getByDTO(commentDTO, duplicateUser.getId());
+        comment.setPid(Generator.pidGenerator());
         comment.setStatus(1);
+        comment.setArticleId(article.getId());
 
         //检验邮箱是否正确
 
         commentService.save(comment);
+        producer.emailCheckerProducer(duplicateUser.getEmail(), duplicateUser.getId());
 
         return R.success("评论提交成功，审核通过后即生效");
     }
@@ -314,6 +321,7 @@ public class CommentController {
         userQueryDTO.setUserId(user.getId());
         userQueryDTO.setEmail(user.getEmail());
         userQueryDTO.setIsAdmin(user.getIsAdmin());
+        userQueryDTO.setEmailStatus(user.getEmailStatus());
 
         CommentQueryDTO result = new CommentQueryDTO();
         result.setUser(userQueryDTO);

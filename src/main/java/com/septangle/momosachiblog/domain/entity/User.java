@@ -37,6 +37,9 @@ public class User implements Serializable {
 
     private String email;
 
+    // 0为confirmed, 1为未验证, 2为验证不通过
+    private Integer emailStatus;
+
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private Date updateTime;
 
@@ -54,21 +57,21 @@ public class User implements Serializable {
 
     private Integer isAdmin;
 
-    public void setUserByCommentDTO(CommentDTO commentInfo) {
-        this.password = UserConstant.nonePassword;
-        this.username = UserConstant.noneUsername;
+    public User(CommentDTO commentDTO) {
+        this.password = UserConstant.FAKE_USER_PASSWORD;
+        this.username = UserConstant.FAKE_USER_USERNAME;
 
-        this.nickname = commentInfo.getNickname();
-        this.website = commentInfo.getWebsite();
-        this.email = commentInfo.getEmail();
+        this.nickname = commentDTO.getNickname();
+        this.website = commentDTO.getWebsite();
+        this.email = commentDTO.getEmail();
 
-        if(!commentInfo.getAvatar().equals("not-update")){
-            this.avatar = (commentInfo.getAvatar());
+        if(!commentDTO.getAvatar().equals("not-update")){
+            this.avatar = (commentDTO.getAvatar());
         }else{
-            this.avatar = commentInfo.getAvatarRandom();
+            this.avatar = commentDTO.getAvatarRandom();
         }
 
-        this.setIsAdmin(0);
+        this.isAdmin = 0;
     }
 
 }

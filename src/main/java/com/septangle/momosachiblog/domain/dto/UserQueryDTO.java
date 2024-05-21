@@ -19,4 +19,7 @@ public class UserQueryDTO {
 
     private String email;
 
+    // 0为confirmed, 1为未验证, 2为验证不通过
+    private Integer emailStatus;
+
 }

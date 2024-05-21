@@ -1,7 +1,5 @@
 package com.septangle.momosachiblog;
 
-import com.septangle.momosachiblog.utils.Convertor;
-import com.septangle.momosachiblog.utils.security.PasswordHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;

@@ -1,23 +1,20 @@
 package com.septangle.momosachiblog.controller;
 
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.septangle.momosachiblog.constant.UserConstant;
 import com.septangle.momosachiblog.domain.R;
 import com.septangle.momosachiblog.domain.dto.UserLoginDTO;
 import com.septangle.momosachiblog.domain.entity.User;
+import com.septangle.momosachiblog.domain.repository.rabbitMq.producer.Producer;
 import com.septangle.momosachiblog.domain.security.UserClaim;
 import com.septangle.momosachiblog.service.UserService;
 import com.septangle.momosachiblog.utils.security.TokenUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.el.parser.Token;
-import org.apache.tomcat.util.security.MD5Encoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
-import java.time.LocalDateTime;
 
 @RestController
 @Slf4j
@@ -27,6 +24,8 @@ public class UserController {
     private UserService userService;
     @Autowired
     private TokenUtils tokenUtils;
+    @Autowired
+    private Producer producer;
 
 
     // 同一个IP 2秒最多10次，目前的想法是 使用redis来维护一个key，key的expire_time为 2s，每次在过期 前使用将会刷新过期 时间 至 初始值
@@ -42,7 +41,7 @@ public class UserController {
 
         log.info("ip为{}的用户正在请求登录", ip);
 
-        if(user == null || username.equals(UserConstant.noneUsername) || password.equals(UserConstant.nonePassword)) {
+        if(user == null || username.equals(UserConstant.FAKE_USER_USERNAME) || password.equals(UserConstant.FAKE_USER_PASSWORD)) {
             return R.error("账号或密码错误");
         }
 
@@ -55,6 +54,11 @@ public class UserController {
         req.getSession().setAttribute("userId", user.getId());
 
         return R.success(authorization, "登录成功");
+    }
+
+    @GetMapping("/api/admin/user/pagination/{current}/{size}")
+    public R<String> queryUserPage(@PathVariable int current, @PathVariable int size) {
+        return null;
     }
 
     @GetMapping("/api/v1/authorize")
@@ -73,4 +77,11 @@ public class UserController {
         req.getSession().removeAttribute("userId");
         return R.success("成功");
     }
+
+    @PostMapping("/api/admin/verify/email")
+    public R<String> emailCheck(@RequestParam String email, @RequestParam Long userId) {
+        producer.emailCheckerProducer(email, userId);
+        return R.success("邮箱验证请求添加成功，请等待验证完成");
+    }
+
 }
