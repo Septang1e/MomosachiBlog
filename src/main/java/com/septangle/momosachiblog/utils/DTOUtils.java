@@ -16,8 +16,8 @@ public class DTOUtils {
         Comment comment = new Comment();
         comment.setReplyBy(userId);
         comment.setContent(commentDTO.getContent());
-        comment.setReplyTo(comment.getReplyTo());
-        comment.setRootId(comment.getRootId());
+        comment.setReplyTo(commentDTO.getToId());
+        comment.setRootId(commentDTO.getRootId());
         comment.setIpAddress(commentDTO.getIpAddress());
         return comment;
     }

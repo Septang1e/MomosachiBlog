@@ -12,6 +12,7 @@ public class Producer {
     private final RabbitTemplate rabbitTemplate;
 
     public final static String EMAIL_CHECKER = "email.checker.#";
+    public final static String EMAIL_SENDER = "email.sender.#";
 
     @Autowired
     public Producer(RabbitTemplate rabbitTemplate) {
@@ -23,5 +24,11 @@ public class Producer {
         String msg = email + "," + userId;
         rabbitTemplate.convertAndSend(EMAIL_CHECKER, msg);
     }
+
+    public void emailSenderProducer(String addr, String content, Long userId) {
+        String msg = addr + "," + content + "," + userId;
+        rabbitTemplate.convertAndSend(msg, EMAIL_SENDER);
+    }
+
 
 }

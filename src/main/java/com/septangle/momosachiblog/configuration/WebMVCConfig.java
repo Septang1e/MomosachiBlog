@@ -9,6 +9,7 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 
 import java.util.List;
@@ -57,6 +58,10 @@ public class WebMVCConfig extends WebMvcConfigurationSupport {
     }
      **/
 
+    @Override
+    protected void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/backend/**").addResourceLocations("classpath:/backend/");
+    }
 
     @Override
     protected void extendMessageConverters(List<HttpMessageConverter<?>> converters)

@@ -130,6 +130,7 @@ public class CommonController {
         List<ArticleModule> articleModules= articleRepository.findArticleModulesByTitleLike(name);
         List<CategoryModule> categoryModules = categoryRepository.findCategoryModulesByNameLike(name);
 
+        log.info("name is {}", name);
         log.info("{}", tagModules);
         log.info("{}", articleModules);
 
@@ -142,37 +143,6 @@ public class CommonController {
         return R.success(result);
     }
 
-    @PostMapping("/v2/delete/articles")
-    public R<String>deleteArticles() {
-        articleRepository.deleteAll();
-        return R.success("success");
-    }
-
-    @PostMapping("/v2/delete/tags")
-    public R<Long>deleteTest() {
-        tagRepository.deleteAll();
-        return R.success(articleRepository.count());
-    }
-
-    @PostMapping("/v2/delete/categories")
-    public R<String>deleteCategories() {
-        categoryRepository.deleteAll();
-        return R.success("");
-    }
-
-    @PostMapping("/v2/test")
-    public R<Long>delete() {
-        return R.success(articleRepository.count());
-    }
-
-    @GetMapping("/admin/test")
-    public R<TagModule> test() {
-        TagModule tagModule = new TagModule();
-        tagModule.setName("542121");
-        tagModule.setPid("qas");
-        tagRepository.save(tagModule);
-        return R.success(tagModule);
-    }
     @PostMapping("/admin/elasticsearch/data/synchronize")
     public R<String>dataSynchronize() {
 
@@ -195,7 +165,7 @@ public class CommonController {
             LambdaQueryWrapper<Tag> tagLambdaQueryWrapper = new LambdaQueryWrapper<>();
             tagLambdaQueryWrapper
                     .eq(Tag::getIsDelete, 0)
-                    .eq(Tag::getName, tagModule.getName());
+                    .eq(Tag::getPid, tagModule.getPid());
             Tag tag = tagService.getOne(tagLambdaQueryWrapper);
             if(tag == null) {
                 tagRepository.deleteById(tagModule.getId());
@@ -206,7 +176,7 @@ public class CommonController {
             LambdaQueryWrapper<Article> articleLambdaQueryWrapper = new LambdaQueryWrapper<>();
             articleLambdaQueryWrapper
                     .eq(Article::getIsDelete, 0)
-                    .eq(Article::getTitle, articleModule.getTitle());
+                    .eq(Article::getPid, articleModule.getPid());
             Article article = articleService.getOne(articleLambdaQueryWrapper);
             if(article == null) {
                 articleRepository.deleteById(articleModule.getId());

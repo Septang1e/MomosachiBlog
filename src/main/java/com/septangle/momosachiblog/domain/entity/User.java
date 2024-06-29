@@ -55,6 +55,7 @@ public class User implements Serializable {
 
     private Integer isDelete;
 
+    // 0 为普通用户，1 为管理员
     private Integer isAdmin;
 
     public User(CommentDTO commentDTO) {

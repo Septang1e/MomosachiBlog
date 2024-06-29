@@ -276,7 +276,7 @@ public class ArticleController {
         for(Long id : idList) {
             Article article = articleService.getById(id);
 
-            if(article == null) {
+            if(Objects.isNull(article)) {
                 return R.error("id为" + id + "的文章不存在");
             }
             article.setIsDelete(1);
@@ -437,6 +437,25 @@ public class ArticleController {
 
         return R.success("状态改变成功");
     }
+
+    @GetMapping("/api/admin/view/count")
+    public R<Long> getViewCount() {
+
+        List<Article> articles = articleService.list();
+        Long result = 0L;
+        for(Article article : articles) {
+            if(article.getIsDelete() == 0){
+                result += article.getViewCount();
+            }
+        }
+        return R.success(result);
+    }
+
+    @GetMapping("/api/article/archive")
+    public R<ArticleDTO> getArchiveData() {
+        return null;
+    }
+
 
 
     private void addTagByArticleDTO(ArticleUploadDTO articleDTO, Article article) {

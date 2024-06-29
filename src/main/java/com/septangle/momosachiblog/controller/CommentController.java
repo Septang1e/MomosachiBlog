@@ -70,11 +70,28 @@ public class CommentController {
         //更新头像
         if(Objects.nonNull(duplicateUser) && !commentDTO.getAvatar().equals("not-update")){
             duplicateUser.setAvatar(commentDTO.getAvatar());
+            //保存 User 和 Comment
+            userService.saveOrUpdate(duplicateUser);
         }
 
         //若用户不存在则创建一个新用户
         if(Objects.isNull(duplicateUser)){
+
+            duplicateUserFilter.clear();
+            duplicateUserFilter
+                    .eq(User::getEmail, commentDTO.getEmail());
+
+            User user = userService.getOne(duplicateUserFilter);
+            if(Objects.nonNull(user)) {
+                return R.error("该用户已存在！");
+            }
+
+
             duplicateUser = new User(commentDTO);
+            //保存 User 和 Comment
+
+            userService.saveOrUpdate(duplicateUser);
+            producer.emailCheckerProducer(duplicateUser.getEmail(), duplicateUser.getId());
         }
 
         Article article = articleService.getByPid(commentDTO.getArticlePid());
@@ -83,8 +100,6 @@ public class CommentController {
             return R.error("文章PID出现异常");
         }
 
-        //保存 User 和 Comment
-        userService.saveOrUpdate(duplicateUser);
         Comment comment = DTOUtils.getByDTO(commentDTO, duplicateUser.getId());
         comment.setPid(Generator.pidGenerator());
         comment.setStatus(1);
@@ -93,7 +108,6 @@ public class CommentController {
         //检验邮箱是否正确
 
         commentService.save(comment);
-        producer.emailCheckerProducer(duplicateUser.getEmail(), duplicateUser.getId());
 
         return R.success("评论提交成功，审核通过后即生效");
     }
@@ -214,6 +228,15 @@ public class CommentController {
         }
     }
 
+    @GetMapping("/admin/comment/count")
+    public R<Long> getCommentCount() {
+        LambdaQueryWrapper<Comment> commentLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        commentLambdaQueryWrapper.eq(Comment::getIsDelete, 0);
+
+        return R.success(commentService.count(commentLambdaQueryWrapper));
+    }
+
+    // 用于前端数据展示
     private R<Page<CommentDTO>> pagination(int current, int size,
                                            Article article, Long rootId,
                                            int isDeleted, String order
@@ -231,7 +254,7 @@ public class CommentController {
                     .orderByDesc(Comment::getLikeCount);
         }else if("create-time".equals(order)) {
             commentLambdaQueryWrapper
-                    .orderByDesc(Comment::getCreateTime);
+                    .orderByAsc(Comment::getCreateTime);
         }
         //分页
         commentService.page(page, commentLambdaQueryWrapper);
@@ -240,7 +263,28 @@ public class CommentController {
         List<CommentDTO> record = new ArrayList<>();
         for(Comment comment : page.getRecords()) {
             User user = userService.getById(comment.getReplyBy());
+
+            if(user.getIsDelete() == 1) {
+                continue;
+            }
+
             CommentDTO commentDTO = getByComment(user, comment, article.getPid());
+
+            // 如果 回复的Id不等于-1，那么就将回复人的名称加入到结果中
+            if(Objects.nonNull(commentDTO.getToId())) {
+
+                Long id = commentDTO.getToId();
+                comment = commentService.getById(id);
+                //通过评论获取评论用户名
+                if(Objects.nonNull(comment)) {
+                    user = userService.getById(comment.getReplyBy());
+                    if(Objects.nonNull(user)){
+                        commentDTO.setToName(user.getNickname());
+                    }
+                }
+
+            }
+
             record.add(commentDTO);
         }
         result.setRecords(record);
@@ -308,7 +352,9 @@ public class CommentController {
         commentDTO.setLikeCount(comment.getLikeCount());
         commentDTO.setCreateTime(comment.getCreateTime());
         commentDTO.setRootId(comment.getRootId());
-        commentDTO.setToId(commentDTO.getToId());
+        if(comment.getReplyTo() != -1) {
+            commentDTO.setToId(comment.getReplyTo());
+        }
         commentDTO.setContent(comment.getContent());
         commentDTO.setCommentId(comment.getId());
         commentDTO.setArticlePid(articlePid);
@@ -352,13 +398,13 @@ public class CommentController {
                 .eq(Comment::getFatherId, -1)
                 .orderByDesc(Comment::getCreateTime);
 
-        Page<Comment>rootDefalutPage = new Page<>(pageNum, pageSize);
-        commentService.page(rootDefalutPage, commentDefaultDataGetter);
+        Page<Comment>rootDefaultPage = new Page<>(pageNum, pageSize);
+        commentService.page(rootDefaultPage, commentDefaultDataGetter);
 
         //集成的分页结果
         List<CommentDTO>records = new ArrayList<>();
         long floor = 1L;
-        for(Comment comment : rootDefalutPage.getRecords()){
+        for(Comment comment : rootDefaultPage.getRecords()){
             User commentUser = userService.getById(comment.getReplyBy());
             CommentDTO commentDTO = setCommentDTO(commentUser, comment);
             commentDTO.setFloor(floor++);
@@ -366,9 +412,9 @@ public class CommentController {
         }
         Page<CommentDTO>results = new Page<>();
         results.setRecords(records);
-        results.setCurrent(rootDefalutPage.getCurrent());
-        results.setTotal(rootDefalutPage.getTotal());
-        results.setSize(rootDefalutPage.getSize());
+        results.setCurrent(rootDefaultPage.getCurrent());
+        results.setTotal(rootDefaultPage.getTotal());
+        results.setSize(rootDefaultPage.getSize());
 
         return R.success(results);
     }

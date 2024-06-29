@@ -33,7 +33,7 @@ public class PictureArchiveController {
     @PostMapping("/upload")
     public R<String> upload(@RequestParam("file") MultipartFile multipartFile) throws IOException {
         //把图片加密为Base64的形式
-        String base64 =Base64.getEncoder().encodeToString(multipartFile.getBytes());
+        String base64 = Base64.getEncoder().encodeToString(multipartFile.getBytes());
 
         PictureArchive pictureArchive = new PictureArchive();
         //设置图片的基本信息

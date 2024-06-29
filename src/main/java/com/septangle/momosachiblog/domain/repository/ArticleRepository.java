@@ -12,4 +12,5 @@ import java.util.List;
 public interface ArticleRepository extends ElasticsearchRepository<ArticleModule, String> {
     List<ArticleModule> findArticleModulesByTitleLike(String title);
     ArticleModule findArticleModuleByTitle(String title);
+    
 }
