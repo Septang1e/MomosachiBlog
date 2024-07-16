@@ -2,26 +2,62 @@ package com.septangle.momosachiblog.utils;
 
 import com.baomidou.mybatisplus.core.toolkit.ArrayUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.core.parameters.P;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.xbill.DNS.*;
 import org.xbill.DNS.Record;
 
+import javax.mail.*;
+import javax.mail.Authenticator;
+import javax.mail.Message;
+import javax.mail.PasswordAuthentication;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 import java.io.*;
 
 
-import java.net.Inet4Address;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.util.*;
 
+
 @Slf4j
+@Component
 public class EmailUtils {
+
+    @Autowired
+    private JavaMailSender mailSender;
+
+    private static final String from = "2934833295@qq.com";
 
     private static final String EMAIL_REGEX = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}$";
 
     private static final Set<String> filter = new HashSet<>(List.of("gmail.com"));
 
-    public static void sendEmail(String email, String content) {
+    public static void sendEmail(String to, String subject, String content) throws MessagingException {
+//        Properties properties = new Properties();
+//        properties.put("mail.smtp.auth", "true");
+//        properties.put("mail.smtp.starttls.enable", "true");
+//        properties.put("mail.smtp.host", "smtp.qq.com");
+//        properties.put("mail.smtp.port", "465");
+//
+//        Session session = Session.getInstance(properties, new Authenticator() {
+//            @Override
+//            protected PasswordAuthentication getPasswordAuthentication() {
+//                return new PasswordAuthentication(from, "xzvjnzbjlshudgid");
+//            }
+//        });
+//        Message message = new MimeMessage(session);
+//        message.setFrom(new InternetAddress(from));
+//        message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
+//        message.setSubject(subject);
+//        message.setText(content, true);
+//
+//        Transport.send(message);
+
+
 
     }
 

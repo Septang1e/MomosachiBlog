@@ -1,6 +1,7 @@
 package com.septangle.momosachiblog.domain.common;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import com.septangle.momosachiblog.constant.Constants;
 import com.septangle.momosachiblog.constant.UserConstant;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.reflection.MetaObject;
@@ -32,7 +33,9 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
 
         Long userId = BaseContext.getCurrentId();
         //log.info("currentThreadOnMetaObjectUpdate = {}, userId = {}", Thread.currentThread().getName(), userId);
+        if(Constants.likeOrViewCountUpdateUserId.equals(userId)) return;
 
+        log.info("{}", metaObject);
         metaObject.setValue("updateTime",new Date());
         if(userId == null)userId = UserConstant.withoutCreateUser_ID;
         metaObject.setValue("updateUser", userId);

@@ -1,5 +1,10 @@
 server:
-    port: 8080
+    #ssl settings
+    #ssl:
+        #key-store-type: PKCS12
+        #key-store: classpath:keystore/api.septangle.cn.p12
+        #key-store-password: Eaib1b0402a7fe7
+    port: 80
 spring:
     redis:
         timeout: 5000
@@ -9,7 +14,7 @@ spring:
                 max-wait: -1
                 max-idle: 16
                 min-idle: 8
-        host: 127.0.0.1
+        host: localhost
         port: 6379
     data:
         elasticsearch:
@@ -19,7 +24,6 @@ spring:
         socket-timeout: 50000
         uris: localhost:9200
         connection-timeout: 300000
-
     task:
       execution:
         pool:
@@ -39,7 +43,7 @@ spring:
           max-file-size: 10MB
           max-request-size: 10MB
     rabbitmq:
-        host: 127.0.0.1
+        host: localhost
         port: 5672
         username: guest
         password: guest
@@ -56,7 +60,25 @@ spring:
                     max-attempts: 5 # 重试次数
                     max-interval: 10000   # 重试最大间隔时间
                     initial-interval: 2000  # 重试初始间隔时间
-
+    mail:
+        host: 'smtp.qq.com'
+        username: '2934833295@qq.com'
+        password: 'xzvjnzbjlshudgid'
+        port: 465
+        protocol: smtp
+        default-encoding: utf-8
+        properties:
+            mail:
+                smtp:
+                    auth: true
+                    starttls:
+                        enable: true
+                        required: true
+                    ssl:
+                        enable: true
+                    socketFactory:
+                        port: 465
+                        class: javax.net.ssl.SSLSocketFactory
 
 mybatis-plus:
     mapper-locations: classpath:mappers/*

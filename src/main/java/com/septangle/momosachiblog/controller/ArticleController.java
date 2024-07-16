@@ -2,7 +2,9 @@ package com.septangle.momosachiblog.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.septangle.momosachiblog.constant.Constants;
 import com.septangle.momosachiblog.domain.R;
+import com.septangle.momosachiblog.domain.common.BaseContext;
 import com.septangle.momosachiblog.domain.dto.ArticleDTO;
 import com.septangle.momosachiblog.domain.dto.ArticleUploadDTO;
 import com.septangle.momosachiblog.domain.dto.TagDTO;
@@ -248,6 +250,7 @@ public class ArticleController {
     public R<String> increaseViewCount(@RequestBody String articlePid, HttpServletRequest req) {
         String ipAddress = req.getRemoteAddr();
 
+        BaseContext.setCurrentId(Constants.likeOrViewCountUpdateUserId);
         Article article = articleService.getByPid(articlePid);
         article.setViewCount(article.getViewCount() + 1);
         articleService.updateById(article);
@@ -266,6 +269,7 @@ public class ArticleController {
         }else{
             article.setLikeCount(article.getLikeCount() - 1);
         }
+        BaseContext.setCurrentId(Constants.likeOrViewCountUpdateUserId);
         articleService.updateById(article);
         return R.success("点赞成功");
     }

@@ -7,6 +7,8 @@ public class Constants {
 
     private static final String duplicateRequestKey = device + "-DuplicateRequestKey";
 
+    public static final Long likeOrViewCountUpdateUserId = -91546545163L;
+
     public static String getAuthorizationKey(String key) {
         return authorizationKey + key;
     }

@@ -15,6 +15,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.mail.MessagingException;
 import java.io.IOException;
 import java.util.Objects;
 
@@ -51,7 +52,7 @@ public class Consumer {
     }
 
     @RabbitListener(queuesToDeclare = @Queue(name = Producer.EMAIL_SENDER))
-    public void emailSenderConsumer(String content, Message message, Channel channel) throws IOException, InterruptedException{
+    public void emailSenderConsumer(String content, Message message, Channel channel) throws IOException, InterruptedException, MessagingException {
         String []split = content.split(",");
         Long userId = Long.valueOf(split[2]);
         User user = userService.getById(userId);
@@ -89,7 +90,7 @@ public class Consumer {
         }
 
         // 发送邮件
-        EmailUtils.sendEmail(emailSendModule.getAddress(), emailSendModule.getContent());
+        EmailUtils.sendEmail(emailSendModule.getAddress(), "test", emailSendModule.getContent());
 
     }
 }

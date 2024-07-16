@@ -32,7 +32,7 @@ public class AuthHandlerInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object object) throws Exception {
-        //log.info("用户 {} 正在访问网站，正在进行拦截", request.getRemoteAddr());
+        log.info("用户 {} 正在访问网站，正在进行拦截", request.getRemoteAddr());
 
         //获取 request 的URI
         String requestURI = request.getRequestURI();
