@@ -29,7 +29,7 @@ spring:
             driver-class-name: com.mysql.cj.jdbc.Driver
             url: jdbc:mysql://localhost:3306/septangle_blog?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
             username: root
-            password: Eaib1b0402a7fe7
+            password: ${{ secret.DATABASE_PASSWORD }}
             max-active: 100
         type: com.alibaba.druid.pool.DruidDataSource
     servlet:
