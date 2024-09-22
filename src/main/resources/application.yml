@@ -35,7 +35,7 @@ spring:
             driver-class-name: com.mysql.cj.jdbc.Driver
             url: jdbc:mysql://localhost:3306/septangle_blog?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
             username: root
-            password: Eaib1b0402a7fe7
+            password: 
             max-active: 100
         type: com.alibaba.druid.pool.DruidDataSource
     servlet:
@@ -63,7 +63,7 @@ spring:
     mail:
         host: 'smtp.qq.com'
         username: '2934833295@qq.com'
-        password: 'xzvjnzbjlshudgid'
+        password: 
         port: 465
         protocol: smtp
         default-encoding: utf-8
